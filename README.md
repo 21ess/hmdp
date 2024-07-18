@@ -39,3 +39,9 @@
     1. key的设置，要保证唯一性，验证码与手机号绑定，而token通过UUID生成
     2. 数据类型的选择：code->String，token->Hash
     3. 创建时设定TTL，但是拦截器中每次会刷新token的TTL，保证token不过期
+
+### 2. 拦截器优化
+
+<font color=#0099ff>*问题：第一个拦截器并非拦截一切路径*</font>
+
+*:star:解决：新增一个全局拦截器，如果用户处于登录态（即ThreadLocal中保存了用户信息），我们就刷新Redis的TTL*
