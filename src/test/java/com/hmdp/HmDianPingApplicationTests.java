@@ -5,6 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
+import javax.print.attribute.standard.MediaName;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Scanner;
 
 @SpringBootTest
 class HmDianPingApplicationTests {

@@ -36,8 +36,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     @Override
     public Result queryById(Long id) {
         // Shop shop = queryWithoutPassThrough(id);
-        // Shop shop = queryWithMutex(id);
-        Shop shop = queryWithLogicExpire(id);
+        Shop shop = queryWithMutex(id);
+        // Shop shop = queryWithLogicExpire(id);
         if (shop == null) return  Result.fail("店铺不存在");
 
         return Result.ok(shop);

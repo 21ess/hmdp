@@ -173,3 +173,52 @@
 <img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240720120951878.png" alt="image-20240720120951878" style="zoom:50%;" />
 
 > 还有其他方案
+
+### 3.2 基本下单
+
+***问题：超卖问题***
+
+<img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240720162446204.png" alt="image-20240720162446204" style="zoom:50%;" />
+
+### 3.3 CAS解决超卖问题
+
+*核心代码*
+
+```java
+// 3.减少库存，CAS方案，判断当前的库存是否是之前查询到库存->update时库存必须大于0
+boolean success = seckillVoucherService.update()
+    .setSql("stock = stock - 1")
+    .eq("voucher_id", voucherId).gt("stock", 0)
+    .update();
+```
+
+*原理*
+
+1. 本质是利用了mysql的锁机制，因为在RR隔离级别下，update操作默认会添加行锁中的排他锁，从而必然只会存在一个线程可以进行写操作
+2. 同时需要创建订单，我们需要提交事务
+
+### 3.4 一人一单问题
+
+*原理*
+
+* 利用之前保存在ThreadLocal中的userID，但是synchronized锁锁定的是jvm对象，在单机情况下，可以使用常量池中的String对象来实现对象的唯一性。
+* 同时要注意`@Transactional`是通过代理实现事务的，应该要调用代理对象中的方法来实现事务
+
+*核心代码*
+
+```java
+        Long userId = UserHolder.getUser().getId();
+        // 注意锁释放和事务提交的先后顺序
+        synchronized (userId.toString().intern()) {// 先将id转化为字符串，在从字符串常量池中查找，从而保证对象锁的正确
+            // 获取代理对象
+            // 1.如果直接调用方法，spring的事务会失效，因为spring是通过代理来实现事务的
+            // 2.需要先获得当前的代理对象再通过代理对象来调用方法才能实现事务
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+            return proxy.createVoucherOrder(voucherId);
+        }
+```
+
+### 3.5 分布式锁
+
+
+
