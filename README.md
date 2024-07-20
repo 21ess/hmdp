@@ -122,9 +122,54 @@
 
 #### 2.5.1 互斥锁方案
 
+<img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240720114547352.png" alt="image-20240720114547352" style="zoom:50%;" />
 
+* 锁的选择
+
+  这里利用redis中的`setnx`方法（java中的`setIfAbsent`方法），只有key不存在时才能创建成功，因为在分布式系统下不能使用synchronized作为锁。
+
+  而redis本身的操作又是单线程的，保证了锁的唯一性。
+
+  将对象前缀+对象id作为key，保证了高并发
+
+* 锁的释放
+
+  为了防止死锁出现，使用try-finally结构，保证一定要释放锁，同时给锁设置过期时间
 
 #### 2.5.2 逻辑过期
 
-![image-20240719213928490](https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240719213928490.png)
+<img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240719213928490.png" alt="image-20240719213928490" style="zoom: 50%;" />
 
+* 不同于，互斥锁的方法，逻辑过期保证了更好的可用性（没有死锁，没有线程等待），但是key永不过期，如果在高并发场景下，在查询数据库线程回写redis期间会导致数据的不一致
+
+* 线程池：
+
+  >  根据阿里巴巴开发手册，必须通过线程池获取线程，而非自己创建线程
+
+  ```java
+      private static final ThreadPoolExecutor CACHE_REBUILD_EXECUTOR = new ThreadPoolExecutor(
+              2,
+              5,
+              2L,
+              TimeUnit.SECONDS,
+              new ArrayBlockingQueue<>(3)
+              );
+  ```
+
+## 3.秒杀系统
+
+### 3.1 全局唯一ID
+
+**分布式系统**下的全局唯一ID，要保证
+
+* 唯一性
+* 高可用：使用集群
+* 递增性：
+* 高性能：快速生成
+* 安全性：不泄露生成规律
+
+以Long，8字节作为ID号，如下定义
+
+<img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240720120951878.png" alt="image-20240720120951878" style="zoom:50%;" />
+
+> 还有其他方案
