@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisConstants;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -50,7 +51,7 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
                         .map(JSONUtil::toJsonStr)
                         .collect(Collectors.toList()));
 
-        stringRedisTemplate.expire(key, 10L, TimeUnit.HOURS);
+        // 对于商户类型数据，采用内存淘汰策略
         return shopTypes;
     }
 }
