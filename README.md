@@ -220,5 +220,42 @@ boolean success = seckillVoucherService.update()
 
 ### 3.5 分布式锁
 
+在集群模式下，synchronized对象锁失效
 
+因为在不同的tomcat服务器中维护着不同的jvm，这些jvm中的变量无法通讯。
+
+*解决方案*
+
+<img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240721124203796.png" alt="image-20240721124203796" style="zoom:50%;" />
+
+* 依然是利用Redis的String作为锁，nx保证锁的唯一性，ex作为防止死锁的保底策略，执行完毕finally释放锁
+
+```shell
+set lock thread1 nx ex 5;
+
+del lock;
+```
+
+#### 3.5.1 锁的误删问题
+
+*情况1*
+
+业务阻塞导致的锁超时误删
+
+<img src="https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240721124238596.png" alt="image-20240721124238596" style="zoom:50%;" />
+
+> 注意，分布式场景下，这些线程不一定在同一个节点上，仅仅靠 ThreadID 无法保证线程的唯一性
+
+* 在存入线程id时，我们需要区分不同的节点，使用`static final`类型的UUID来区分不同的节点
+* 在释放锁的时机，检查锁中的value是否和当前线程id + 节点编号一致
+
+*情况2*
+
+![image-20240721135648051](https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240721135648051.png)
+
+要保证**判断锁标识和释放锁的原子性**
+
+*解决方案*
+
+* lua脚本
 
