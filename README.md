@@ -302,6 +302,8 @@ del lock;
 
 ## 4. 秒杀系统优化
 
+#### 4.1 业务解耦
+
 *思路*
 
 ![image-20240722022442030](https://txcould-image-1318385221.cos.ap-nanjing.myqcloud.com/image/image-20240722022442030.png)
@@ -312,4 +314,10 @@ del lock;
 
 1. 库存：String
 2. 优惠卷对于的购买用户：Set集合
+
+*version-1*
+
+使用java中的阻塞队列来实现
+
+#### 4.2 MQ实现
 

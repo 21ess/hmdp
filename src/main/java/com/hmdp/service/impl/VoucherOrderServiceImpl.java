@@ -80,7 +80,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     VoucherOrder order = orderTask.take();// 阻塞方法，等待队头元素
                     handleVoucherOrder(order);
                 } catch (Exception e) {
-                    log.error("创建订单异常");
+                    log.error("创建订单异常", e);
                 }
             }
         }
@@ -98,7 +98,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         try {
             // 当前线程是子线程，无法通过currentProxy获得代理对象
-            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
             proxy.createVoucherOrder(order);
         } catch (IllegalStateException e) {
             throw new RuntimeException(e);
@@ -138,7 +137,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         // TODO:4.开启异步任务
         // 4.1获取代理对象，创建订单是一个事务，需要通过代理对象来实现事务
-        IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+        proxy = (IVoucherOrderService) AopContext.currentProxy();
 
         return Result.ok(orderId);
     }
@@ -210,9 +209,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Transactional
     public void createVoucherOrder(VoucherOrder voucherOrder) {
         // 2.1 判断一人一单
-        Long userId = UserHolder.getUser().getId();
         Long voucherId = voucherOrder.getVoucherId();
-        Integer count = query().eq("user_id", userId).eq("voucher_id",
+        Integer count = query().eq("user_id", voucherOrder.getUserId()).eq("voucher_id",
                 voucherId).count();
         if (count > 0) {
             log.error("不能重复下单");
