@@ -9,9 +9,13 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.SimpleRedisLock;
+import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -34,6 +38,7 @@ import java.util.concurrent.*;
  * @since 2021-12-22
  */
 @Service
+@Slf4j
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
 
     @Resource
@@ -50,6 +55,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Resource
     private RedissonClient redissonClient;
+
+    @Resource
+    private RabbitTemplate rabbitTemplate;
 
     // 保证我们的子线程可以得到当前类的代理对象，从而实现创建订单的业务
     private IVoucherOrderService proxy;
@@ -125,21 +133,29 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return Result.fail(flag == 1 ? "库存不足" : "不能重复下单");
         }
 
-        // 3.2 ==0保存订单信息到阻塞队列
+        // 3.2 ==0保存订单信息到rabbitmq
         long orderId = redisIdWorker.nextId("order");
         VoucherOrder voucherOrder = new VoucherOrder();
         voucherOrder
                 .setVoucherId(voucherId)
                 .setUserId(userId)
                 .setId(orderId);
+        rabbitTemplate.convertAndSend(SystemConstants.SECKILL_VOUCHER_SAVE_QUEUE, voucherOrder);
+        log.info("发送保存秒杀券订单信息成功:{}",orderId);
+        return Result.ok(orderId);
+    }
+
+    /**
+     * 使用线程池 + 阻塞队列实现异步下单
+     * @param voucherOrder
+     */
+    private void blockingQueueSaveOrder(VoucherOrder voucherOrder) {
         orderTask.add(voucherOrder);
         // 抢单完成
 
         // TODO:4.开启异步任务
         // 4.1获取代理对象，创建订单是一个事务，需要通过代理对象来实现事务
         proxy = (IVoucherOrderService) AopContext.currentProxy();
-
-        return Result.ok(orderId);
     }
 
 //    @Override
